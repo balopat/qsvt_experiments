@@ -1,0 +1,5 @@
+cirq-core
+matplotlib
+sympy
+scipy
+pyqsp
