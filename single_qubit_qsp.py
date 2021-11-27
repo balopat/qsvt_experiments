@@ -61,9 +61,12 @@ def probability_state_stays_zero(theta, phis) -> float:
     Returns:
           the |0> -> |0> probability
     """
-    state = cirq.Circuit(
-        qsp(cirq.NamedQubit("theta"), theta, phis)).final_state_vector(0)
+    state = qsp_circuit(phis, theta).final_state_vector(0)
     return np.abs(state[0]) ** 2
+
+
+def qsp_circuit(phis, theta):
+    return cirq.Circuit(qsp(cirq.NamedQubit("q0"), theta, phis))
 
 
 def plot():
@@ -76,7 +79,7 @@ def plot():
     unprocessed_probabilities = list(
         map(lambda th: probability_state_stays_zero(th, (0, 0)), signal))
 
-    # behold, the BB1 angle sequence
+    # the BB1 angle sequence
     eta = 1 / 2 * np.arccos(-1 / 4)
     bb1 = [np.pi / 2, -eta, 2 * eta, 0, -2 * eta, eta]
 
@@ -84,9 +87,21 @@ def plot():
     bb1_probabilities = list(
         map(lambda th: probability_state_stays_zero(th, bb1), signal))
 
+    # print out an example QSP circuit
+    print("The QSP circuit for the BB1 transformed Rx rotation at theta -1")
+    print(qsp_circuit(bb1, np.pi/2))
+
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": "sans-serif",
+        "font.sans-serif": ["Helvetica"]})
+    plt.title("The effect of the BB1 sequence")
     plt.plot(signal, unprocessed_probabilities)
     plt.plot(signal, bb1_probabilities)
-
+    plt.legend([r"$U=R_x(\theta)$", r"$U=BB1(R_x(\theta))$"])
+    plt.ylabel(r"$\langle 0 | U(\theta)| 0 \rangle$")
+    plt.xlabel(r"$\frac{\theta}{\pi}$")
+    plt.savefig("bb1_plot.png")
     plt.show()
 
 
