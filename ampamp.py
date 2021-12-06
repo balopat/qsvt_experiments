@@ -9,10 +9,6 @@ from matplotlib import pyplot as plt
 def u(n_qubits: int) -> cirq.Gate:
     # we seed it to 1 to keep it even
     return cirq.TOFFOLI ** (1/2)
-    return cirq.MatrixGate(name="u",
-                           matrix=cirq.testing.random_unitary(2 ** n_qubits,
-                                                              random_state=1))
-
 
 def rot_state(name: str, state_vector: np.ndarray) -> Callable[
     [float], cirq.Gate]:
@@ -40,7 +36,7 @@ def qsp(qs: List[cirq.Qid],
 
 def plot():
     """"""
-    n_qubits = 3
+    n_qubits = 2
     oracle = u(n_qubits)
     oracle_inverse = cirq.inverse(oracle)
 
