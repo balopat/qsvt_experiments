@@ -96,10 +96,10 @@ def plot():
         "font.family": "sans-serif",
         "font.sans-serif": ["Helvetica"]})
     plt.title("The effect of the BB1 sequence")
-    plt.plot(signal, unprocessed_probabilities)
-    plt.plot(signal, bb1_probabilities)
+    plt.plot(signal / np.pi, unprocessed_probabilities)
+    plt.plot(signal / np.pi, bb1_probabilities)
     plt.legend([r"$U=R_x(\theta)$", r"$U=BB1(R_x(\theta))$"])
-    plt.ylabel(r"$\langle 0 | U(\theta)| 0 \rangle$")
+    plt.ylabel(r"$|\langle 0 | U(\theta)| 0 \rangle|^2$")
     plt.xlabel(r"$\frac{\theta}{\pi}$")
     plt.savefig("bb1_plot.png")
     plt.show()

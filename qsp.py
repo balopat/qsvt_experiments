@@ -1,15 +1,12 @@
-from typing import List, Iterable
+from typing import List
 
 import cirq
 import numpy as np
-import pyqsp
 import pyqsp.phases
-import sympy
-from pyqsp import angle_sequence
 from matplotlib import pyplot as plt
 
 
-def w(a: float) -> cirq.Gate:
+def wx(a: float) -> cirq.Gate:
     """"The Wx operator for the signal in the Wx QSP convention.
 
     Args:
@@ -23,7 +20,10 @@ def w(a: float) -> cirq.Gate:
 def r(a: float) -> cirq.Gate:
     """"The R operator in the reflection QSP convention.
 
-
+    Args:
+        a: the input parameter
+    Returns:
+        the gate for R(a)
     """
     return cirq.MatrixGate(name=f"R({a})",
                            matrix=np.array([[a, np.sqrt(1 - a ** 2)],
@@ -42,9 +42,8 @@ def s(phi: float) -> cirq.Gate:
     return cirq.Rz(rads=-2 * phi)
 
 
-def qsp(theta: float, wx_phis: List[float],
-        convention: str) -> cirq.Circuit:
-    """Returns the complete QSP sequence.
+def qsp(theta: float, wx_phis: List[float], convention: str) -> cirq.Circuit:
+    """Returns the complete QSP sequence as a cirq.Circuit.
 
     For a given qubit, signal and QSP angles, it returns back a list of
     operations corresponding to the full QSP sequence.
@@ -52,14 +51,16 @@ def qsp(theta: float, wx_phis: List[float],
     Args:
          q: the qubit to apply to operations to
          theta: the signal angle (in this file it is the X rotation angle)
-         phis: the QSP angles
+         wx_phis: the QSP angles in Wx convention
+         convention: the convention to convert to, possible values are "wx" for
+            the Wx QSP convention and "r" for reflection QSP convention
     Returns:
           list of operations representing the QSP sequence
     """
     q = cirq.NamedQubit('q')
-    signal = w if convention == 'wx' else r
+    signal = wx if convention == 'wx' else r
     processor = s
-    if not wx_phis:
+    if len(wx_phis) == 0:
         return cirq.Circuit()
 
     if convention == 'wx':
@@ -77,18 +78,23 @@ def qsp(theta: float, wx_phis: List[float],
     return cirq.Circuit(ops[::-1])
 
 
-def qsp_response(theta, wx_phis, convention, basis='x') -> float:
+def qsp_response(theta: float, wx_phis: List[float],
+                 convention: str, basis: str = 'x') -> float:
     """Returns the QSP response for a given theta.
 
     The QSP sequence for the given signal and QSP angles defines a unitary, U.
-    This function returns the probability that U preserves the |0> state, i.e.
-    |<0|U|0>|^2.
+    This function returns <b|U|b> for a basis state |b>.
 
     Args:
           theta: the X rotation
-          wx_phis: the QSP angles
+          wx_phis: the QSP angles in Wx convention
+          convention: the convention to convert to, possible values are "wx" for
+            the Wx QSP convention and "r" for reflection QSP convention
+          basis: the QSP signal basis - either "z" for <0|U|0> or "x" for
+            <+|U|+>
     Returns:
-          the |0> -> |0> probability
+          the QSP response, which is the overlap of the signal basis state with
+          the basis state evolved by U, <b|U|b>
     """
     meas_state = 1 / np.sqrt(2) * np.array(
         [1, 1]) if basis == 'x' else np.array([1, 0])
@@ -101,10 +107,12 @@ def qsp_response(theta, wx_phis, convention, basis='x') -> float:
     return factor * meas_state.conj().T @ circuit.final_state_vector(meas_state)
 
 
-def plot(coeffs, title=None, convention='wx', basis='x'):
+def plot(coeffs, title=None, convention='wx', basis='x', filename=None):
     """The main function to plot the two cases presented in the paper."""
     if not title:
         title = f"QSP({coeffs}, conv={convention}, basis={basis}) response"
+    if not filename:
+        filename = f"qsp_{coeffs}_{convention}_{basis}.png"
     # we plot from -1 to 1
     a_s = np.linspace(-1, 1, 50)
     poly_as = [
@@ -127,35 +135,42 @@ def plot(coeffs, title=None, convention='wx', basis='x'):
                 "$|Poly(a)|^2$"])
     plt.ylabel(r"$f(a)$")
     plt.xlabel(r"a")
-    plt.savefig("qsp.png")
+    plt.savefig(filename)
     plt.show()
 
 
 if __name__ == '__main__':
     plot(coeffs=[0, 0], convention="wx", basis="z")
-    plot(coeffs=[0, 0], convention="wx", basis="z")
+    plot(coeffs=[0, 0], convention="wx", basis="x")
+    plot(coeffs=[0, 0], convention="r", basis="x")
     plot(coeffs=[0, 0], convention="r", basis="z")
 
-    # bb1 = [0, 0, 0]
+    # this matches the numbers reported in the paper
+    fpsearch_10_05 = pyqsp.phases.FPSearch().generate(10, 0.5)
+    plot(coeffs=fpsearch_10_05, convention="wx", basis="z",
+         title="QSP(FPSearch(10, 0.5), conv=wx, basis=z)",
+         filename="fpsearch_10_0.5_wx_z.png")
 
-    # wxphis = [-1.58023603, -1.55147987, -1.6009483, -1.52812171, -1.62884337, \
-    #        -1.49242141, -1.67885248, -1.41255145, -1.8386054, -0.87463828, \
-    #        -0.87463828, -1.8386054, -1.41255145, -1.67885248, -1.49242141, \
-    #        -1.62884337, -1.52812171, -1.6009483, -1.55147987, -1.58023603]
-    #
-    # wxphis = [-1.57576949, -1.56061906, -1.58668456, -1.54830449, -1.60140168, \
-    #           -1.52944546, -1.6278833, -1.48692359, -1.71436243, -1.15604816, \
-    #           -1.15604816, -1.71436243, -1.48692359, -1.6278833, -1.52944546, \
-    #           -1.60140168, -1.54830449, -1.58668456, -1.56061906, -1.57576949]
-    # bb1 = [wxphis[0] - np.pi / 4] + [phi - np.pi / 2 for phi
-    #                                  in wxphis[1:-1]] + [
-    #           wxphis[-1] - np.pi / 4]
-    # # poly = pyqsp.poly.PolySign().generate(degree=19, delta=10.0)
-    # bb1 = pyqsp.angle_sequence.QuantumSignalProcessingPhases(poly)
-    # bb1 = pyqsp.phases.FPSearch().generate(20, 0.8)
-    #
-    # print(repr(bb1))
-    # basis = 'x'
-    # bb1=[0,0]
-    # pyqsp.response.PlotQSPResponse(bb1, measurement=basis, plot_magnitude=True)
-    # pyqsp.response.PlotQSPResponse(bb1, measurement=basis)
+    plot(coeffs=fpsearch_10_05, convention="r", basis="z",
+         title="QSP(FPSearch(10, 0.5), conv=r, basis=z)",
+         filename="fpsearch_10_0.5_r_z.png")
+
+    # Sign function approximation QSP phase angles from the paper
+    # this does not match (in fact it's non-deterministic):
+    # >>> poly = pyqsp.poly.PolySign().generate(degree=19, delta=10)
+    # >>> pyqsp.angle_sequence.QuantumSignalProcessingPhases(poly)
+    # opened issue: https://github.com/ichuang/pyqsp/issues/1
+    poly_sign_from_paper = [
+        0.01558127, -0.01805798, 0.05705643, -0.01661832,
+        0.16163773, 0.09379074, -2.62342885, 0.49168481,
+        0.92403822, -0.09696846, -0.09696846, 0.92403822,
+        0.49168481, -2.62342885, 0.09379074, 0.16163773,
+        -0.01661832, 0.05705643, -0.01805798, 1.5863776]
+
+    plot(coeffs=poly_sign_from_paper, convention="wx", basis="x",
+         title="PolySign(19, 10, conv=wx, basis=x)",
+         filename="polysign_19_10_wx_x.png")
+
+    plot(coeffs=poly_sign_from_paper, convention="r", basis="x",
+         title="PolySign(19, 10, conv=r, basis=x)",
+         filename="polysign_19_10_r_x.png")
