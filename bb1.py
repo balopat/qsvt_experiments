@@ -101,7 +101,7 @@ def plot():
     plt.legend([r"$U=R_x(\theta)$", r"$U=BB1(R_x(\theta))$"])
     plt.ylabel(r"$|\langle 0 | U(\theta)| 0 \rangle|^2$")
     plt.xlabel(r"$\frac{\theta}{\pi}$")
-    plt.savefig("bb1_plot.png")
+    plt.savefig("plots/bb1.png")
     plt.show()
 
 
