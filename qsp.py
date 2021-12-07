@@ -135,7 +135,7 @@ def plot(coeffs, title=None, convention='wx', basis='x', filename=None):
                 "$|Poly(a)|^2$"])
     plt.ylabel(r"$f(a)$")
     plt.xlabel(r"a")
-    plt.savefig(filename)
+    plt.savefig(f"plots/{filename}")
     plt.show()
 
 
