@@ -20,14 +20,14 @@ from matplotlib import pyplot as plt
 
 
 def w(theta: float) -> cirq.Gate:
-    """"The W operator for the signal.
+    """ "The W operator for the signal.
 
     Args:
         theta: the input signal.
     Returns:
         the gate for the X rotation by theta
     """
-    # note, at this point, we are just directly using the Rx rotation. 
+    # note, at this point, we are just directly using the Rx rotation.
     return cirq.Rx(rads=theta)
 
 
@@ -42,8 +42,7 @@ def s(phi: float) -> cirq.Gate:
     return cirq.Rz(rads=-2 * phi)
 
 
-def qsp(q: cirq.Qid, theta: float, phis: List[float]) -> Iterable[
-    cirq.Operation]:
+def qsp(q: cirq.Qid, theta: float, phis: List[float]) -> Iterable[cirq.Operation]:
     """Returns the complete QSP sequence.
 
     For a given qubit, signal and QSP angles, it returns back a list of
@@ -91,7 +90,8 @@ def plot():
 
     # the |0> -> |0> probability with pure X rotations
     unprocessed_probabilities = list(
-        map(lambda th: probability_state_stays_zero(th, (0, 0)), signal))
+        map(lambda th: probability_state_stays_zero(th, (0, 0)), signal)
+    )
 
     # the BB1 angle sequence
     eta = 1 / 2 * np.arccos(-1 / 4)
@@ -99,16 +99,20 @@ def plot():
 
     # the |0> -> |0> probability with BB1 processed X rotations
     bb1_probabilities = list(
-        map(lambda th: probability_state_stays_zero(th, bb1), signal))
+        map(lambda th: probability_state_stays_zero(th, bb1), signal)
+    )
 
     # print out an example QSP circuit
     print("The QSP circuit for the BB1 transformed Rx rotation at theta π/2")
-    print(qsp_circuit(bb1, np.pi/2))
+    print(qsp_circuit(bb1, np.pi / 2))
 
-    plt.rcParams.update({
-        "text.usetex": True,
-        "font.family": "sans-serif",
-        "font.sans-serif": ["Helvetica"]})
+    plt.rcParams.update(
+        {
+            "text.usetex": True,
+            "font.family": "sans-serif",
+            "font.sans-serif": ["Helvetica"],
+        }
+    )
     plt.title("The effect of the BB1 sequence")
     plt.plot(signal / np.pi, unprocessed_probabilities)
     plt.plot(signal / np.pi, bb1_probabilities)
@@ -119,5 +123,5 @@ def plot():
     plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     plot()
