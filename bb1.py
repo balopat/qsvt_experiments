@@ -70,9 +70,9 @@ def qsp_circuit(phis, theta):
 
 
 def plot():
-    """The main function to plot the two cases presented in the paper."""
+    """The main function to qsp the two cases presented in the paper."""
 
-    # we plot from -pi to pi
+    # we qsp from -pi to pi
     signal = np.linspace(-np.pi, np.pi, 50)
 
     # the |0> -> |0> probability with pure X rotations
@@ -88,7 +88,7 @@ def plot():
         map(lambda th: probability_state_stays_zero(th, bb1), signal))
 
     # print out an example QSP circuit
-    print("The QSP circuit for the BB1 transformed Rx rotation at theta -1")
+    print("The QSP circuit for the BB1 transformed Rx rotation at theta π/2")
     print(qsp_circuit(bb1, np.pi/2))
 
     plt.rcParams.update({

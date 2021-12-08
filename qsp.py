@@ -3,7 +3,8 @@ from typing import List
 import cirq
 import numpy as np
 import pyqsp.phases
-from matplotlib import pyplot as plt
+
+from plot_qsp import qsp_plot
 
 
 def wx(a: float) -> cirq.Gate:
@@ -42,7 +43,8 @@ def s(phi: float) -> cirq.Gate:
     return cirq.Rz(rads=-2 * phi)
 
 
-def qsp(theta: float, wx_phis: List[float], convention: str) -> cirq.Circuit:
+def qsp(theta: float, wx_phis: List[float], convention: str,
+        basis='x') -> cirq.Circuit:
     """Returns the complete QSP sequence as a cirq.Circuit.
 
     For a given qubit, signal and QSP angles, it returns back a list of
@@ -54,10 +56,13 @@ def qsp(theta: float, wx_phis: List[float], convention: str) -> cirq.Circuit:
          wx_phis: the QSP angles in Wx convention
          convention: the convention to convert to, possible values are "wx" for
             the Wx QSP convention and "r" for reflection QSP convention
+         basis: the QSP signal basis - either "z" for <0|U|0> or "x" for
+            <+|U|+>
     Returns:
-          list of operations representing the QSP sequence
+          the cirq Circuit representing the QSP sequence
     """
     q = cirq.NamedQubit('q')
+    d = len(wx_phis) - 1
     signal = wx if convention == 'wx' else r
     processor = s
     if len(wx_phis) == 0:
@@ -65,17 +70,52 @@ def qsp(theta: float, wx_phis: List[float], convention: str) -> cirq.Circuit:
 
     if convention == 'wx':
         phis = wx_phis
+    elif basis == 'x':
+        phis = to_r_x_from_wx(wx_phis)
     else:
-        phis = [wx_phis[0] - np.pi / 4]
-        phis += [wx_phi - np.pi / 2 for wx_phi in wx_phis[1:-1]]
-        phis += [wx_phis[-1] - np.pi / 4]
+        phis = to_r_z_from_wx(wx_phis)
 
-    # note the reverse order in the circuit notation
-    ops = [processor(phis[0])(q)]
-    for phi in phis[1:]:
-        ops.append(signal(theta)(q))
-        ops.append(processor(phi)(q))
+    if convention == "r" and basis == "z":
+        # use operator product order for easier understanding
+        ops = [cirq.GlobalPhaseOperation(np.exp(1j * (phis[0]))),
+               signal(theta)(q)]
+        for j in range(2, d + 1):
+            ops.append(processor(phis[j - 1])(q))
+            ops.append(signal(theta)(q))
+
+    else:
+        # use operator product order for easier understanding
+        ops = [processor(phis[0])(q)]
+        for phi in phis[1:]:
+            ops.append(signal(theta)(q))
+            ops.append(processor(phi)(q))
+
+    # note the reverse order for the circuit notation
     return cirq.Circuit(ops[::-1])
+
+
+def to_r_z_from_wx(wx_phis: List[float]) -> List[float]:
+    """Convert from Wx convention to R convention in Z basis.
+
+    It returns one less phis, as per Theorem II.3
+    Args:
+        wx_phis: the list of phase angles in the Wx convention
+            (typically coming from pyqsp)
+    Returns:
+         the list of phase angles that can be used in reflection convention in Z
+         basis
+    """
+    d = len(wx_phis) - 1
+    phis = [wx_phis[0] + wx_phis[-1] + (d - 1) * np.pi / 2]
+    phis += [wx_phi - np.pi / 2 for wx_phi in wx_phis[1:-1]]
+    return phis
+
+
+def to_r_x_from_wx(wx_phis: List[float]) -> List[float]:
+    phis = [wx_phis[0] - np.pi / 4]
+    phis += [wx_phi - np.pi / 2 for wx_phi in wx_phis[1:-1]]
+    phis += [wx_phis[-1] - np.pi / 4]
+    return phis
 
 
 def qsp_response(theta: float, wx_phis: List[float],
@@ -100,60 +140,71 @@ def qsp_response(theta: float, wx_phis: List[float],
         [1, 1]) if basis == 'x' else np.array([1, 0])
 
     d = len(wx_phis) - 1
-    factor = 1 if convention == 'wx' else 1j ** d
+    if convention == 'wx' or basis == "z":
+        factor = 1
+    elif convention == 'r' and basis == "x":
+        # see Theorem II.2. to see where this is coming from
+        factor = 1j ** d
 
-    circuit = qsp(theta, wx_phis, convention)
+    circuit = qsp(theta, wx_phis, convention, basis)
 
     return factor * meas_state.conj().T @ circuit.final_state_vector(meas_state)
 
 
-def plot(coeffs, title=None, convention='wx', basis='x', filename=None):
-    """The main function to plot the two cases presented in the paper."""
+def experiment(coeffs, title=None, convention='wx', basis='x', filename=None,
+               target_fn=None,
+               target_fn_label: str = None):
+    """The main function to qsp the two cases presented in the paper."""
     if not title:
         title = f"QSP({coeffs}, conv={convention}, basis={basis}) response"
     if not filename:
-        filename = f"qsp_{coeffs}_{convention}_{basis}.png"
-    # we plot from -1 to 1
-    a_s = np.linspace(-1, 1, 50)
+        filename = f"qsp_{title}_{convention}_{basis}.png"
+    print(f"QSP circuit for {title}")
+    print(qsp(0.123, coeffs, convention, basis))
+
+    # we qsp from -1 to 1
+    a_s = np.linspace(-1, 1, 60)
     poly_as = [
         qsp_response(a, coeffs, convention, basis) for a in a_s
     ]
 
-    print(f"QSP circuit for {title}")
-    print(qsp(0.5, coeffs, convention))
+    qsp_plot(a_s, filename, poly_as, target_fn, target_fn_label, title)
 
-    plt.rcParams.update({
-        "text.usetex": True,
-        "font.family": "sans-serif",
-        "font.sans-serif": ["Helvetica"]})
-    plt.title(title)
-    plt.plot(a_s, np.real(poly_as), marker="*")
-    plt.plot(a_s, np.imag(poly_as), marker="v")
-    plt.plot(a_s, np.abs(poly_as) ** 2, marker="^")
-    plt.legend(["Re(Poly(a))",
-                "Im(Poly(a))",
-                "$|Poly(a)|^2$"])
-    plt.ylabel(r"$f(a)$")
-    plt.xlabel(r"a")
-    plt.savefig(f"plots/{filename}")
-    plt.show()
+
 
 
 if __name__ == '__main__':
-    plot(coeffs=[0, 0], convention="wx", basis="z")
-    plot(coeffs=[0, 0], convention="wx", basis="x")
-    plot(coeffs=[0, 0], convention="r", basis="x")
-    plot(coeffs=[0, 0], convention="r", basis="z")
+    # sanity check for different conventions, all Chebyshev polynomials
+    # are below for conv=r basis=z
+    # TODO: turn these into tests
+    experiment(coeffs=[0, 0], convention="wx", basis="x",
+               title="$QSP(T_1, conv=wx, basis=x)$",
+               filename="t_1_wx_x.png",
+               target_fn=lambda a_s: a_s,
+               target_fn_label="$T_1(a)=a$"
+               )
+    experiment(coeffs=[0, 0], convention="wx", basis="z",
+               title="$QSP(T_1, conv=wx, basis=z)$",
+               filename="t_1_wx_z.png",
+               target_fn=lambda a_s: a_s,
+               target_fn_label="$T_1(a)=a$"
+               )
+    experiment(coeffs=[0, 0], convention="r", basis="x",
+               title="$QSP(T_1, conv=r, basis=x)$",
+               filename="t_1_r_x.png",
+               target_fn=lambda a_s: a_s,
+               target_fn_label="$T_1(a)=a$"
+               )
 
     # this matches the numbers reported in the paper
     fpsearch_10_05 = pyqsp.phases.FPSearch().generate(10, 0.5)
-    plot(coeffs=fpsearch_10_05, convention="wx", basis="z",
-         title="QSP(FPSearch(10, 0.5), conv=wx, basis=z)",
-         filename="fpsearch_10_0.5_wx_z.png")
+    experiment(coeffs=fpsearch_10_05, convention="wx", basis="z",
+               title="QSP(FPSearch(10, 0.5), conv=wx, basis=z)",
+               filename="fpsearch_10_0.5_wx_z.png")
 
-    plot(coeffs=fpsearch_10_05, convention="r", basis="z",
-         title="QSP(FPSearch(10, 0.5), conv=r, basis=z)",
-         filename="fpsearch_10_0.5_r_z.png")
+    experiment(coeffs=fpsearch_10_05, convention="r", basis="z",
+               title="QSP(FPSearch(10, 0.5), conv=r, basis=z)",
+               filename="fpsearch_10_0.5_r_z.png")
 
     # Sign function approximation QSP phase angles from the paper
     # this does not match (in fact it's non-deterministic):
@@ -167,10 +218,47 @@ if __name__ == '__main__':
         0.49168481, -2.62342885, 0.09379074, 0.16163773,
         -0.01661832, 0.05705643, -0.01805798, 1.5863776]
 
-    plot(coeffs=poly_sign_from_paper, convention="wx", basis="x",
-         title="PolySign(19, 10, conv=wx, basis=x)",
-         filename="polysign_19_10_wx_x.png")
+    experiment(coeffs=poly_sign_from_paper, convention="wx", basis="x",
+               title="PolySign(19, 10, conv=wx, basis=x)",
+               filename="polysign_19_10_wx_x.png")
 
-    plot(coeffs=poly_sign_from_paper, convention="r", basis="x",
-         title="PolySign(19, 10, conv=r, basis=x)",
-         filename="polysign_19_10_r_x.png")
+    experiment(coeffs=poly_sign_from_paper, convention="r", basis="x",
+               title="PolySign(19, 10, conv=r, basis=x)",
+               filename="polysign_19_10_r_x.png")
+
+    experiment(coeffs=poly_sign_from_paper, convention="r", basis="z",
+               title="PolySign(19, 10, conv=r, basis=z)",
+               filename="polysign_19_10_r_z.png")
+
+    experiment(coeffs=[0, 0], convention="r", basis="z",
+               title="$QSP(T_1, conv=r, basis=z)$",
+               filename="t_1.png"
+               )
+    experiment(coeffs=[0, 0, 0], convention="r", basis="z",
+               title="$QSP(T_2, conv=r, basis=z)$",
+               filename="t_2.png",
+               target_fn=lambda a_s: 2 * a_s ** 2 - 1,
+               target_fn_label="$T_2(a)=2a^2-1$"
+               )
+    experiment(coeffs=[0, 0, 0, 0], convention="r", basis="z",
+               title="$QSP(T_3, conv=r, basis=z)$",
+               filename="t_3.png",
+               target_fn=lambda a_s: 4 * a_s ** 3 - 3 * a_s,
+               target_fn_label="$T_3(a)=4 a^3-3 a$"
+               )
+    experiment(coeffs=[0, 0, 0, 0, 0], convention="r", basis="z",
+               title="$QSP(T_4, conv=r, basis=z)$",
+               filename="t_4.png",
+               target_fn=lambda a_s: 8 * a_s ** 4 - 8 * a_s ** 2 + 1,
+               target_fn_label="$T_4(a)=8 a^4-8 a^2 +1$"
+               )
+    experiment(coeffs=[0, 0, 0, 0, 0, 0], convention="r", basis="z",
+               title="$QSP(T_5, conv=r, basis=z)$",
+               filename="t_5.png",
+               target_fn=lambda a_s: 16 * a_s ** 5 - 20 * a_s ** 3 + 5 * a_s,
+               target_fn_label="$T_5(a)=16 a^5-20 a^3 + 5 a$"
+               )
+    experiment(coeffs=pyqsp.phases.FPSearch().generate(9, 0.5), convention="r",
+               basis="z",
+               title="QSP(FPSearch(9, 0.5), conv=r, basis=z)",
+               filename="fpsearch_9_0.5_r_z.png")
