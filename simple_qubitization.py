@@ -13,13 +13,12 @@
 #    limitations under the License.
 
 import dataclasses
-from typing import List, Iterable, Callable, Tuple
+from typing import List, Callable, Tuple
 
 import cirq
 import numpy as np
 import pyqsp.phases
 import scipy.linalg
-from matplotlib import pyplot as plt
 
 from plot_qsp import qsp_plot
 from qsp import to_r_z_from_wx
