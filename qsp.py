@@ -124,6 +124,16 @@ def to_r_z_from_wx(wx_phis: List[float]) -> List[float]:
 
 
 def to_r_x_from_wx(wx_phis: List[float]) -> List[float]:
+    """Convert from Wx convention to R convention in X basis.
+
+    It returns one the same number of phis, as per Theorem II.2
+    Args:
+        wx_phis: the list of phase angles in the Wx convention
+            (typically coming from pyqsp)
+    Returns:
+         the list of phase angles that can be used in reflection convention
+         in the X basis
+    """
     phis = [wx_phis[0] - np.pi / 4]
     phis += [wx_phi - np.pi / 2 for wx_phi in wx_phis[1:-1]]
     phis += [wx_phis[-1] - np.pi / 4]

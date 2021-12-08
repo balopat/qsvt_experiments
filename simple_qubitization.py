@@ -63,19 +63,20 @@ class FixedPointAmplitudeAmplification:
         self.rot_a0 = self._rot_state("a0", self.a0)
         self.rot_b0 = self._rot_state("b0", self.b0)
         self.num_qubits = cirq.num_qubits(self.u)
-        self._amplitude_projector = lambda uni: (self.a0 @ uni @ self.b0
-                                                 if len(self.coeffs) % 2 == 1
-                                                 else
-                                                 self.b0 @ uni @ self.b0)
+        self._amplitude_projector = lambda uni: (
+            self.a0 @ uni @ self.b0
+            if len(self.coeffs) % 2 == 1
+            else self.b0 @ uni @ self.b0
+        )
 
-    def _rot_state(self, name: str, state_vector: np.ndarray) -> Callable[
-        [float], cirq.Gate]:
+    def _rot_state(
+        self, name: str, state_vector: np.ndarray
+    ) -> Callable[[float], cirq.Gate]:
         """Rotates the state around a given state."""
         return lambda phi: cirq.MatrixGate(
             name=f"{name}[{phi:.2f}]",
             matrix=scipy.linalg.expm(
-                1j * phi * (2 * np.outer(state_vector,
-                                         state_vector) - np.identity(4))
+                1j * phi * (2 * np.outer(state_vector, state_vector) - np.identity(4))
             ),
         )
 
@@ -114,10 +115,14 @@ b0: {self.b0},
 
 
 class Experiment:
-    def __init__(self, coeffs: List[float], n_points: int,
-                 basis_a: int = 2,
-                 basis_b: int = 3,
-                 n_qubits: int = 2):
+    def __init__(
+        self,
+        coeffs: List[float],
+        n_points: int,
+        basis_a: int = 2,
+        basis_b: int = 3,
+        n_qubits: int = 2,
+    ):
         self.coeffs = coeffs
         self.basis_a = basis_a
         self.basis_b = basis_b
@@ -127,14 +132,16 @@ class Experiment:
         self.a0 = cirq.to_valid_state_vector(basis_a, n_qubits)
         self.b0 = cirq.to_valid_state_vector(basis_b, n_qubits)
 
-    def _get_u_gate_and_initial_amplitude(self, p: float, sign: int) -> Tuple[
-        float, cirq.Gate]:
+    def _get_u_gate_and_initial_amplitude(
+        self, p: float, sign: int
+    ) -> Tuple[float, cirq.Gate]:
         """Creates a CNOT-like unitary with a real amplitude."""
         u = sign * scipy.linalg.expm(1j * p * cirq.unitary(cirq.CX))
         a = u[self.basis_a][self.basis_b]
         new_a = a * sign * np.conj(a) / np.abs(a)
-        return new_a, cirq.MatrixGate(name="u",
-                                      matrix=sign * np.conj(a) / np.abs(a) * u)
+        return new_a, cirq.MatrixGate(
+            name="u", matrix=sign * np.conj(a) / np.abs(a) * u
+        )
 
     def _run_half(self, sign: int):
         for p in np.linspace(1e-8, np.pi, self.n_points):
@@ -144,10 +151,7 @@ class Experiment:
             self.fa_s.append(fp_amp.run())
 
     def _get_fpamp(self, u):
-        return FixedPointAmplitudeAmplification(u,
-                                                self.a0,
-                                                self.b0,
-                                                self.coeffs)
+        return FixedPointAmplitudeAmplification(u, self.a0, self.b0, self.coeffs)
 
     def run(self) -> Tuple[List[float], List[float]]:
         _, sample_fpamp = self._get_u_gate_and_initial_amplitude(0.123, -1)
@@ -159,12 +163,12 @@ class Experiment:
 
 
 def experiment(
-        coeffs,
-        npoints=50,
-        title=None,
-        filename="fp_amp.png",
-        target_fn=None,
-        target_fn_label: str = None,
+    coeffs,
+    npoints=50,
+    title=None,
+    filename="fp_amp.png",
+    target_fn=None,
+    target_fn_label: str = None,
 ):
     """The main function to qsp the two cases presented in the paper."""
     title = f"Fixed amplitude amplification for {title}"
@@ -175,36 +179,52 @@ def experiment(
 
 
 if __name__ == "__main__":
-    experiment(title="$T_1$", coeffs=to_r_z_from_wx([0, 0]), npoints=10,
-               filename="fp_amp_t1.png",
-               target_fn=lambda a_s: a_s,
-               target_fn_label="$T_1(a)=a$",
-               )
-    experiment(title="$T_2$", coeffs=to_r_z_from_wx([0, 0, 0]), npoints=100,
-               filename="fp_amp_t2.png",
-               target_fn=lambda a_s: 2 * a_s ** 2 - 1,
-               target_fn_label="$T_2(a)=2a^2-1$",
-               )
-    experiment(title="$T_3$", coeffs=to_r_z_from_wx([0, 0, 0, 0]), npoints=100,
-               filename="fp_amp_t3.png",
-               target_fn=lambda a_s: 4 * a_s ** 3 - 3 * a_s,
-               target_fn_label="$T_3(a)=4 a^3-3 a$"
-               )
-    experiment(title="$T_4$", coeffs=to_r_z_from_wx([0, 0, 0, 0, 0]),
-               npoints=100,
-               filename="fp_amp_t4.png",
-               target_fn=lambda a_s: 8 * a_s ** 4 - 8 * a_s ** 2 + 1,
-               target_fn_label="$T_4(a)=8 a^4-8 a^2 +1$",
-               )
-    experiment(title="$T_5$", coeffs=to_r_z_from_wx([0, 0, 0, 0, 0, 0]),
-               npoints=100,
-               filename="fp_amp_t5.png",
-               target_fn=lambda a_s: 16 * a_s ** 5 - 20 * a_s ** 3 + 5 * a_s,
-               target_fn_label="$T_5(a)=16 a^5-20 a^3 + 5 a$",
-               )
+    experiment(
+        title="$T_1$",
+        coeffs=to_r_z_from_wx([0, 0]),
+        npoints=10,
+        filename="fp_amp_t1.png",
+        target_fn=lambda a_s: a_s,
+        target_fn_label="$T_1(a)=a$",
+    )
+    experiment(
+        title="$T_2$",
+        coeffs=to_r_z_from_wx([0, 0, 0]),
+        npoints=100,
+        filename="fp_amp_t2.png",
+        target_fn=lambda a_s: 2 * a_s ** 2 - 1,
+        target_fn_label="$T_2(a)=2a^2-1$",
+    )
+    experiment(
+        title="$T_3$",
+        coeffs=to_r_z_from_wx([0, 0, 0, 0]),
+        npoints=100,
+        filename="fp_amp_t3.png",
+        target_fn=lambda a_s: 4 * a_s ** 3 - 3 * a_s,
+        target_fn_label="$T_3(a)=4 a^3-3 a$",
+    )
+    experiment(
+        title="$T_4$",
+        coeffs=to_r_z_from_wx([0, 0, 0, 0, 0]),
+        npoints=100,
+        filename="fp_amp_t4.png",
+        target_fn=lambda a_s: 8 * a_s ** 4 - 8 * a_s ** 2 + 1,
+        target_fn_label="$T_4(a)=8 a^4-8 a^2 +1$",
+    )
+    experiment(
+        title="$T_5$",
+        coeffs=to_r_z_from_wx([0, 0, 0, 0, 0, 0]),
+        npoints=100,
+        filename="fp_amp_t5.png",
+        target_fn=lambda a_s: 16 * a_s ** 5 - 20 * a_s ** 3 + 5 * a_s,
+        target_fn_label="$T_5(a)=16 a^5-20 a^3 + 5 a$",
+    )
     # these are the same as in the Martyn et al paper
     wx_phis = pyqsp.phases.FPSearch().generate(10, 0.5)
 
-    experiment(title="FPSearch(10,0.5)", coeffs=to_r_z_from_wx(wx_phis),
-               npoints=100,
-               filename="fp_amp_fpsearch_10_0.5.png")
+    experiment(
+        title="FPSearch(10,0.5)",
+        coeffs=to_r_z_from_wx(wx_phis),
+        npoints=100,
+        filename="fp_amp_fpsearch_10_0.5.png",
+    )
