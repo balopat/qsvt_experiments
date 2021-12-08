@@ -20,6 +20,7 @@ pip install -r requirements.txt
 - [bb1.py](./bb1.py): single qubit BB1 experiment reproduced from Martyn et al
 - [qsp.py](./qsp.py): single qubit QSP experiments and code to convert between Wx and reflection QSP conventions
 - [simple_qubitization.py](./qsp.py): two-qubit amplitude amplification experiments
+- [plots/](./plots): the output for plots produced by the experiments. Lots of polynomials.
 
 
 
