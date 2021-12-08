@@ -15,7 +15,7 @@ To setup dependencies, run:
 pip install -r requirements.txt
 ```
 
-# Entry points
+# Files
 
 - [bb1.py](./bb1.py): single qubit BB1 experiment reproduced from Martyn et al
 - [qsp.py](./qsp.py): single qubit QSP experiments and code to convert between Wx and reflection QSP conventions
